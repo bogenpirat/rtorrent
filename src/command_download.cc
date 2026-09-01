@@ -25,6 +25,7 @@
 
 #include "core/download.h"
 #include "core/manager.h"
+#include "core/rate_tracker.h"
 #include "rpc/parse.h"
 #include "session/session_manager.h"
 
@@ -669,11 +670,11 @@ initialize_command_download() {
   // Network related:
   //
 
-  CMD2_DL         ("d.up.rate",           [](auto* download, auto) { return download->info()->up_rate()->rate(); });
+  CMD2_DL         ("d.up.rate",           [](auto* download, auto) { return core::rate_tracker()->rate(download->info()->up_rate()); });
   CMD2_DL         ("d.up.total",          [](auto* download, auto) { return download->info()->up_rate()->total(); });
-  CMD2_DL         ("d.down.rate",         [](auto* download, auto) { return download->info()->down_rate()->rate(); });
+  CMD2_DL         ("d.down.rate",         [](auto* download, auto) { return core::rate_tracker()->rate(download->info()->down_rate()); });
   CMD2_DL         ("d.down.total",        [](auto* download, auto) { return download->info()->down_rate()->total(); });
-  CMD2_DL         ("d.skip.rate",         [](auto* download, auto) { return download->info()->skip_rate()->rate(); });
+  CMD2_DL         ("d.skip.rate",         [](auto* download, auto) { return core::rate_tracker()->rate(download->info()->skip_rate()); });
   CMD2_DL         ("d.skip.total",        [](auto* download, auto) { return download->info()->skip_rate()->total(); });
 
   CMD2_DL         ("d.peer_exchange",     [](auto* download, auto)       { return download->info()->is_pex_enabled(); });

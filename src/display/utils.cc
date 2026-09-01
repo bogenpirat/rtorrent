@@ -25,6 +25,7 @@
 #include "globals.h"
 #include "core/download.h"
 #include "core/manager.h"
+#include "core/rate_tracker.h"
 #include "rpc/parse_commands.h"
 #include "ui/root.h"
 
@@ -107,8 +108,8 @@ print_download_info_full(char* first, char* last, core::Download* d) {
                          (double)d->download()->file_list()->size_bytes() / (double)(1 << 20));
 
   first = print_buffer(first, last, " Rate: %5.1f / %5.1f KB Uploaded: %7.1f MB",
-                       (double)d->info()->up_rate()->rate() / (1 << 10),
-                       (double)d->info()->down_rate()->rate() / (1 << 10),
+                       (double)core::rate_tracker()->rate(d->info()->up_rate()) / (1 << 10),
+                       (double)core::rate_tracker()->rate(d->info()->down_rate()) / (1 << 10),
                        (double)d->info()->up_rate()->total() / (1 << 20));
 
   if (d->download()->info()->is_active() && !d->is_done()) {
@@ -213,8 +214,8 @@ print_download_info_compact(char* first, char* last, core::Download* d) {
   else
     first = print_buffer(first, last, "      ");
 
-  first = print_buffer(first, last, "| %6.1f KB ", (double)d->info()->up_rate()->rate() / (1 << 10));
-  first = print_buffer(first, last, "| %6.1f KB ", (double)d->info()->down_rate()->rate() / (1 << 10));
+  first = print_buffer(first, last, "| %6.1f KB ", (double)core::rate_tracker()->rate(d->info()->up_rate()) / (1 << 10));
+  first = print_buffer(first, last, "| %6.1f KB ", (double)core::rate_tracker()->rate(d->info()->down_rate()) / (1 << 10));
   first = print_buffer(first, last, "| %7.1f MB ", (double)d->info()->up_rate()->total() / (1 << 20));
   first = print_buffer(first, last, "| ");
 
@@ -245,12 +246,15 @@ print_download_info_compact(char* first, char* last, core::Download* d) {
 
 char*
 print_download_time_left(char* first, char* last, core::Download* d) {
-  uint32_t rate = d->info()->down_rate()->rate();
+  uint32_t rate = core::rate_tracker()->rate(d->info()->down_rate());
 
+  // Below this the estimate is meaningless, and the divisions get silly.
   if (rate < 512)
     return print_buffer(first, last, "--d --:--");
-  
-  time_t remaining = (d->download()->file_list()->size_bytes() - d->download()->bytes_done()) / (rate & ~(uint32_t)(512 - 1));
+
+  // The rate is already smoothed, so unlike the raw counter it does not need to
+  // be rounded down to keep the estimate from jumping around.
+  time_t remaining = (d->download()->file_list()->size_bytes() - d->download()->bytes_done()) / rate;
 
   return print_ddhhmm(first, last, remaining);
 }
@@ -362,13 +366,13 @@ print_status_info(char* first, char* last) {
     first = print_buffer(first, last, " KB]");
   }
 
-  double global_uprate = (double)torrent::up_rate()->rate() / 1024.0;
+  double global_uprate = (double)core::rate_tracker()->rate(torrent::up_rate()) / 1024.0;
   first = print_buffer(first, last, " [Rate %5.1f", global_uprate);
 
   if (!throttle_up_names.empty())
     first = print_status_throttle_rate(first, last, true, throttle_up_names, global_uprate);
 
-  double global_downrate = (double)torrent::down_rate()->rate() / 1024.0;
+  double global_downrate = (double)core::rate_tracker()->rate(torrent::down_rate()) / 1024.0;
   first = print_buffer(first, last, " / %5.1f", global_downrate);
 
   if (!throttle_down_names.empty())

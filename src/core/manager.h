@@ -6,6 +6,7 @@
 #include <vector>
 #include <torrent/utils/log_buffer.h>
 #include <torrent/object.h>
+#include <torrent/system/scheduler.h>
 
 #include "download_list.h"
 #include "range_map.h"
@@ -26,6 +27,7 @@ using ThrottlePair = std::pair<torrent::Throttle*, torrent::Throttle*>;
 using ThrottleMap  =  std::map<std::string, ThrottlePair>;
 
 class View;
+class RateTracker;
 
 class Manager {
 public:
@@ -41,6 +43,11 @@ public:
   FileStatusCache*    file_status_cache()               { return m_file_status_cache.get(); }
 
   HttpQueue*          http_queue()                      { return m_http_queue.get(); }
+  RateTracker*        rate_tracker()                    { return m_rate_tracker.get(); }
+
+  // Start reading the counters that are always reported into the rate tracker,
+  // so they keep being sampled once a second even when nothing looks at them.
+  void                start_rate_sampling();
 
   View*               hashing_view()                    { return m_hashingView; }
   void                set_hashing_view(View* v);
@@ -86,10 +93,16 @@ private:
 
   void                receive_http_failed(std::string msg);
   void                receive_hashing_changed();
+  void                receive_rate_sample();
+
+  // Counters of peers that disconnected are only cleaned out every so many
+  // samples, as walking the whole map every second would be wasteful.
+  static constexpr unsigned int rate_prune_interval = 30;
 
   std::unique_ptr<DownloadList>    m_download_list;
   std::unique_ptr<FileStatusCache> m_file_status_cache;
   std::unique_ptr<HttpQueue>       m_http_queue;
+  std::unique_ptr<RateTracker>     m_rate_tracker;
 
   View*               m_hashingView{};
 
@@ -99,6 +112,9 @@ private:
   torrent::log_buffer_ptr m_log_complete;
 
   std::string         m_magnet_path;
+
+  torrent::system::SchedulerEntry m_task_sample_rates;
+  unsigned int        m_rate_sample_count{};
 };
 
 // Meh, cleanup.

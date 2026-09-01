@@ -71,6 +71,7 @@ Control::initialize() {
   display::Window::slot_adjust([this]() { m_display->adjust_layout(); });
 
   m_core->set_hashing_view(*m_view_manager->find_throw("hashing"));
+  m_core->start_rate_sampling();
 
   m_ui->init(this);
 

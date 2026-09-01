@@ -13,7 +13,9 @@
 #include <torrent/object.h>
 #include <torrent/exceptions.h>
 #include <torrent/object_stream.h>
+#include <torrent/rate.h>
 #include <torrent/throttle.h>
+#include <torrent/torrent.h>
 #include <torrent/net/http_stack.h>
 #include <torrent/net/socket_address.h>
 #include <torrent/runtime/network_config.h>
@@ -31,6 +33,7 @@
 #include "core/download.h"
 #include "core/download_factory.h"
 #include "core/http_queue.h"
+#include "core/rate_tracker.h"
 #include "core/view.h"
 
 #include <torrent/runtime/client_config.h>
@@ -55,6 +58,7 @@ Manager::Manager()
   m_download_list     = std::make_unique<DownloadList>();
   m_file_status_cache = std::make_unique<FileStatusCache>();
   m_http_queue        = std::make_unique<HttpQueue>();
+  m_rate_tracker      = std::make_unique<RateTracker>();
 
   torrent::Throttle* unthrottled = torrent::Throttle::create_throttle();
   unthrottled->set_max_rate(0);
@@ -62,7 +66,45 @@ Manager::Manager()
 }
 
 Manager::~Manager() {
+  torrent::this_thread::scheduler()->erase(&m_task_sample_rates);
+
   torrent::Throttle::destroy_throttle(m_throttles["NULL"].first);
+}
+
+void
+Manager::start_rate_sampling() {
+  m_task_sample_rates.slot() = [this] { receive_rate_sample(); };
+
+  receive_rate_sample();
+}
+
+void
+Manager::receive_rate_sample() {
+  // Reading a counter is what samples it, so touching the ones we always report
+  // keeps them on a steady one second cadence no matter whether the display is
+  // up or an RPC client happens to ask. Peer counters are left to whoever draws
+  // them, as there is no point in walking every connection every second.
+  m_rate_tracker->rate(torrent::up_rate());
+  m_rate_tracker->rate(torrent::down_rate());
+
+  for (const auto& d : *m_download_list) {
+    m_rate_tracker->rate(d->info()->up_rate());
+    m_rate_tracker->rate(d->info()->down_rate());
+    m_rate_tracker->rate(d->info()->skip_rate());
+  }
+
+  for (const auto& throttle : m_throttles) {
+    if (throttle.second.first != nullptr)
+      m_rate_tracker->rate(throttle.second.first->rate());
+
+    if (throttle.second.second != nullptr)
+      m_rate_tracker->rate(throttle.second.second->rate());
+  }
+
+  if (++m_rate_sample_count % rate_prune_interval == 0)
+    m_rate_tracker->prune();
+
+  torrent::this_thread::scheduler()->wait_for_ceil_seconds(&m_task_sample_rates, 1s);
 }
 
 bool
@@ -120,7 +162,7 @@ Manager::retrieve_throttle_value(const torrent::Object::string_type& name, bool 
     if (rate) {
 
       if (throttle_max > 0)
-        return (int64_t)throttle->rate()->rate();
+        return (int64_t)m_rate_tracker->rate(throttle->rate());
       else
         return (int64_t)-1;
 
