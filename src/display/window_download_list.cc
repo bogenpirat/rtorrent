@@ -4,6 +4,7 @@
 
 #include "globals.h"
 #include "core/download.h"
+#include "core/rate_tracker.h"
 #include "core/view.h"
 #include "display/canvas.h"
 #include "display/utils.h"
@@ -43,9 +44,9 @@ WindowDownloadList::get_attr_color(core::View::iterator selected) {
   bool            active     = item->is_open() && item->is_active();
   int             title_color;
   if (item->is_done())
-    title_color = (active ? item->info()->up_rate()->rate() ? RCOLOR_SEEDING : RCOLOR_COMPLETE : RCOLOR_STOPPED) + offset;
+    title_color = (active ? core::rate_tracker()->rate(item->info()->up_rate()) ? RCOLOR_SEEDING : RCOLOR_COMPLETE : RCOLOR_STOPPED) + offset;
   else
-    title_color = (active ? item->info()->down_rate()->rate() ? RCOLOR_LEECHING : RCOLOR_INCOMPLETE : RCOLOR_QUEUED) + offset;
+    title_color = (active ? core::rate_tracker()->rate(item->info()->down_rate()) ? RCOLOR_LEECHING : RCOLOR_INCOMPLETE : RCOLOR_QUEUED) + offset;
   return std::make_pair(m_canvas->attr_map().at(title_color) | focus_attr, title_color);
 }
 

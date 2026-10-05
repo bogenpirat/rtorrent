@@ -9,6 +9,7 @@
 #include <torrent/utils/log.h>
 
 #include "core/manager.h"
+#include "core/rate_tracker.h"
 #include "core/view_manager.h"
 #include "display/canvas.h"
 #include "ui/root.h"
@@ -863,6 +864,12 @@ initialize_command_ui() {
   CMD2_VAR_VALUE   ("ui.throttle.global.step.large",  500);
 
   CMD2_VAR_VALUE   ("ui.focus.page_size", 0);
+
+  // Time constant of the moving average the reported transfer rates are put
+  // through, in seconds. Zero reports the raw per-second speed instead. This
+  // covers the rates sent over RPC as well, not just the ones drawn here.
+  CMD2_ANY         ("ui.rate_smoothing",     [](auto, auto) { return core::rate_tracker()->smoothing(); });
+  CMD2_ANY_VALUE   ("ui.rate_smoothing.set", [](auto, auto value) { core::rate_tracker()->set_smoothing(value); return torrent::Object(); });
 
   CMD2_ANY_LIST    ("ui.status.throttle.up.set",   std::bind(&cmd_status_throttle_names, true, std::placeholders::_2));
   CMD2_ANY_LIST    ("ui.status.throttle.down.set", std::bind(&cmd_status_throttle_names, false, std::placeholders::_2));

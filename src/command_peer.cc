@@ -12,6 +12,7 @@
 #include "command_helpers.h"
 #include "control.h"
 #include "core/manager.h"
+#include "core/rate_tracker.h"
 #include "display/utils.h"
 
 torrent::Object
@@ -66,11 +67,11 @@ initialize_command_peer() {
 
   CMD2_PEER("p.completed_percent", std::bind(&retrieve_p_completed_percent, std::placeholders::_1));
 
-  CMD2_PEER("p.up_rate",           std::bind(&torrent::Rate::rate,  std::bind(&torrent::Peer::up_rate, std::placeholders::_1)));
+  CMD2_PEER("p.up_rate",           [](auto* peer, auto) { return core::rate_tracker()->rate(peer->up_rate()); });
   CMD2_PEER("p.up_total",          std::bind(&torrent::Rate::total, std::bind(&torrent::Peer::up_rate, std::placeholders::_1)));
-  CMD2_PEER("p.down_rate",         std::bind(&torrent::Rate::rate,  std::bind(&torrent::Peer::down_rate, std::placeholders::_1)));
+  CMD2_PEER("p.down_rate",         [](auto* peer, auto) { return core::rate_tracker()->rate(peer->down_rate()); });
   CMD2_PEER("p.down_total",        std::bind(&torrent::Rate::total, std::bind(&torrent::Peer::down_rate, std::placeholders::_1)));
-  CMD2_PEER("p.peer_rate",         std::bind(&torrent::Rate::rate,  std::bind(&torrent::Peer::peer_rate, std::placeholders::_1)));
+  CMD2_PEER("p.peer_rate",         [](auto* peer, auto) { return core::rate_tracker()->rate(peer->peer_rate()); });
   CMD2_PEER("p.peer_total",        std::bind(&torrent::Rate::total, std::bind(&torrent::Peer::peer_rate, std::placeholders::_1)));
 
   CMD2_PEER        ("p.snubbed",     std::bind(&torrent::Peer::is_snubbed,  std::placeholders::_1));

@@ -17,6 +17,8 @@ libsub_root_a_SOURCES = \
 	core/http_queue.h \
 	core/manager.cc \
 	core/manager.h \
+	core/rate_tracker.cc \
+	core/rate_tracker.h \
 	core/view.cc \
 	core/view.h \
 	core/view_manager.cc \

@@ -6,6 +6,7 @@
 #include <torrent/download/resource_manager.h>
 
 #include "core/manager.h"
+#include "core/rate_tracker.h"
 #include "ui/root.h"
 #include "rpc/parse.h"
 #include "rpc/parse_commands.h"
@@ -140,12 +141,12 @@ initialize_command_throttle() {
   CMD2_ANY_VALUE   ("throttle.max_downloads.global.set", std::bind(&throttle_update, "throttle.max_downloads.global._val.set", std::placeholders::_2));
 
   // TODO: Move the logic into some libtorrent function.
-  CMD2_ANY         ("throttle.global_up.rate",              std::bind(&torrent::Rate::rate, torrent::up_rate()));
+  CMD2_ANY         ("throttle.global_up.rate",              [](auto, auto) { return core::rate_tracker()->rate(torrent::up_rate()); });
   CMD2_ANY         ("throttle.global_up.total",             std::bind(&torrent::Rate::total, torrent::up_rate()));
   CMD2_ANY         ("throttle.global_up.max_rate",          std::bind(&torrent::Throttle::max_rate, torrent::up_throttle_global()));
   CMD2_ANY_VALUE_V ("throttle.global_up.max_rate.set",      std::bind(&set_up_throttle_i64, control->ui(), std::placeholders::_2));
   CMD2_ANY_VALUE_KB("throttle.global_up.max_rate.set_kb",   std::bind(&set_up_throttle_i64, control->ui(), std::placeholders::_2));
-  CMD2_ANY         ("throttle.global_down.rate",            std::bind(&torrent::Rate::rate, torrent::down_rate()));
+  CMD2_ANY         ("throttle.global_down.rate",            [](auto, auto) { return core::rate_tracker()->rate(torrent::down_rate()); });
   CMD2_ANY         ("throttle.global_down.total",           std::bind(&torrent::Rate::total, torrent::down_rate()));
   CMD2_ANY         ("throttle.global_down.max_rate",        std::bind(&torrent::Throttle::max_rate, torrent::down_throttle_global()));
   CMD2_ANY_VALUE_V ("throttle.global_down.max_rate.set",    std::bind(&set_down_throttle_i64, control->ui(), std::placeholders::_2));

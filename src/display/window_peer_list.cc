@@ -11,6 +11,7 @@
 #include <torrent/peer/peer_info.h>
 
 #include "core/download.h"
+#include "core/rate_tracker.h"
 #include "display/canvas.h"
 #include "display/utils.h"
 
@@ -73,9 +74,9 @@ WindowPeerList::redraw() {
                     ip_address.c_str());
     x += 27;
 
-    m_canvas->print(x, y, "%.1f", (double)p->up_rate()->rate() / 1024); x += 7;
-    m_canvas->print(x, y, "%.1f", (double)p->down_rate()->rate() / 1024); x += 7;
-    m_canvas->print(x, y, "%.1f", (double)p->peer_rate()->rate() / 1024); x += 7;
+    m_canvas->print(x, y, "%.1f", (double)core::rate_tracker()->rate(p->up_rate()) / 1024); x += 7;
+    m_canvas->print(x, y, "%.1f", (double)core::rate_tracker()->rate(p->down_rate()) / 1024); x += 7;
+    m_canvas->print(x, y, "%.1f", (double)core::rate_tracker()->rate(p->peer_rate()) / 1024); x += 7;
 
     char remoteChoked;
     char peerType;
